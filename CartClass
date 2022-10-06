@@ -1,0 +1,36 @@
+using Portfolio.Models.Domain.Files;
+using Portfolio.Models.Domain.ListingReservations;
+using Portfolio.Models.Domain.Listings;
+using Portfolio.Models.Domain.Users;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+
+namespace Portfolio.Models.Domain.Cart
+{
+  public class Cart 
+    {
+        public int Id { get; set; }
+        public Locations Location { get; set; }
+
+        public string Title { get; set; }
+        
+        public int CostPerNight { get; set; }
+        
+        public int CostPerWeek { get; set; }
+
+        public DateTime DateCheckIn { get; set; }
+
+        public DateTime DateCheckOut { get; set; }
+        
+        public LookUp ReservationStatus { get; set; }
+
+        public User User { get; set; }
+
+        public List<ListingImageUrl> ListingUrls { get; set; }
+
+    }
+}
