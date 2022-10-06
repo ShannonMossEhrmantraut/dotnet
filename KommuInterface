@@ -1,0 +1,26 @@
+using Portfolio.Models;
+using Portfolio.Models.Domain.Cart;
+using Portfolio.Models.Domain.ListingReservations;
+using Portfolio.Models.Requests.ListingReservations;
+using System.Collections.Generic;
+
+namespace Sabio.Services
+{
+    public interface IListingReservationService 
+    {
+       ListingReservation GetListingReservationById(int id);
+       
+       Paged<ListingReservation> GetByCreatedBy(int pageIndex, int pageSize, int createdBy);
+       
+       Paged<ListingReservation> GetAll(int pageIndex, int pageSize);
+       
+       List<Cart> GetCartByUserId(int id);
+       
+       int AddListingReservation(ListingReservationAddRequest model, int currentUser); 
+       
+       void UpdateListingReservation(ListingReservationUpdateRequest model, int currentUserId);
+       
+       void DeleteListingReservation(StatusIdUpdateRequest model, int currentUserId);
+
+    }
+}
