@@ -1,3 +1,3 @@
 # dotnet
 
-I will posting soon the portion of the Kommu project soon. 
+Kommu was led by a Senior Project Manager and I was accompanied by a team of 15 Full Stack Software Engineers working on this project. 
