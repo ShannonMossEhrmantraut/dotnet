@@ -1,0 +1,303 @@
+using Portfolio.Data;
+using Portfolio.Data.Providers;
+using Portfolio.Models.Domain.ListingReservations;
+using Portfolio.Models.Domain.Listings;
+using Portfolio.Models.Domain.Users;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Data.SqlClient;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using Portfolio.Services.Interfaces;
+using Portfolio.Models;
+using Portfolio.Models.Requests.ListingReservations;
+using Portfolio.Models.Domain.Files;
+using Portfolio.Models.Domain.Cart;
+using Portfolio.Models.Domain;
+
+namespace Portfolio.Services
+{
+    public class ListingReservationService : IListingReservationService
+    {
+        IDataProvider _data = null;
+        ILookUpService _lookUpService=null;   
+        public ListingReservationService(IDataProvider data, ILookUpService lookUpService)
+        {
+            _data = data;
+            _lookUpService = lookUpService;
+        }
+        public ListingReservation GetListingReservationById(int id)
+        {
+            string procName = "dbo.ListingReservationsById";
+
+            ListingReservation aListing = null;
+
+            _data.ExecuteCmd(procName, delegate (SqlParameterCollection paramCollection)
+            {
+                paramCollection.AddWithValue("@Id", id);
+            }, delegate (IDataReader reader, short set)
+            {
+                int startingIndex = 0;
+
+                aListing = MapSingleListingReservation(reader, ref startingIndex);
+            });
+
+            return aListing;
+            
+        }
+        public List<Cart> GetCartByUserId(int id) 
+        {
+
+            List<Cart> cartListings = null;
+
+            string procName = "dbo.GetCartInfo";
+
+            _data.ExecuteCmd(procName, inputParamMapper: delegate (SqlParameterCollection paramCollection)   
+            {
+                paramCollection.AddWithValue("@UserId", id);   
+
+            }, singleRecordMapper: delegate (IDataReader reader, short set)   
+            {
+                int startingIndex = 0;
+
+                Cart cartSwaps = MapSingleCartItem(reader, ref startingIndex);  
+
+                if (cartListings == null)
+                {
+                    cartListings = new List<Cart>();
+                }
+                cartListings.Add(cartSwaps);               
+
+            });           
+
+            return cartListings;           
+
+        }         
+
+        
+        public Paged<ListingReservation> GetByCreatedBy(int pageIndex, int pageSize, int createdBy)
+        {
+            Paged<ListingReservation> pages = null;
+
+            List<ListingReservation> lists = null;
+
+            int totalCount = 0;
+
+            string procName = "dbo.ListingReservations_Select_ByCreatedBy";
+
+            _data.ExecuteCmd(procName,
+                inputParamMapper: delegate (SqlParameterCollection parameterCollection)
+                {
+                    parameterCollection.AddWithValue("@PageIndex", pageIndex);
+                    parameterCollection.AddWithValue("@PageSize", pageSize);
+                    parameterCollection.AddWithValue("@CreatedBy", createdBy);
+                },
+                singleRecordMapper: delegate (IDataReader reader, short set)
+                {
+                    int startingIndex = 0;
+                    ListingReservation aListingRes = MapSingleListingReservation(reader, ref startingIndex);
+
+
+                   
+
+                    if (totalCount == 0)
+
+                    {
+                        totalCount = reader.GetSafeInt32(startingIndex++);
+                    }
+
+                    if (lists == null)
+                    {
+                        lists = new List<ListingReservation>();
+                    }
+
+                    lists.Add(aListingRes);
+                }
+
+            );
+            if (lists != null)
+            {
+                pages = new Paged<ListingReservation>(lists, pageIndex, pageSize, totalCount);
+            }
+
+            return pages;
+
+        }
+        public Paged<ListingReservation> GetAll(int pageIndex, int pageSize)
+        {
+            Paged<ListingReservation> pages = null;
+
+            List<ListingReservation> lists = null;
+
+            int totalCount = 0;
+
+            string procName = "dbo.ListingReservations_SelectAll";
+
+            _data.ExecuteCmd(procName,
+                inputParamMapper: delegate (SqlParameterCollection parameterCollection)
+                {
+                    parameterCollection.AddWithValue("@PageIndex", pageIndex);
+                    parameterCollection.AddWithValue("@PageSize", pageSize);
+                   
+                },
+                singleRecordMapper: delegate (IDataReader reader, short set)
+                {
+                    int startingIndex = 0;
+                    ListingReservation aListingRes = MapSingleListingReservation(reader, ref startingIndex);
+
+
+
+                    if (totalCount == 0)
+
+                    {
+                        totalCount = reader.GetSafeInt32(startingIndex++);
+                    }
+
+                    if (lists == null)
+                    {
+                        lists = new List<ListingReservation>();
+                    }
+
+                    lists.Add(aListingRes);
+                }
+
+            );
+            if (lists != null)
+            {
+                pages = new Paged<ListingReservation>(lists, pageIndex, pageSize, totalCount);
+            }
+
+            return pages;
+
+        }
+        public int AddListingReservation(ListingReservationAddRequest model, int currentUser)
+        {
+            int id = 0;
+
+            string procName = "dbo.ListingReservations_Insert";
+
+            _data.ExecuteNonQuery(procName, inputParamMapper: delegate (SqlParameterCollection getDataParams)
+            {
+                AddCommonParams(model, getDataParams);
+
+                getDataParams.AddWithValue("@UserId", currentUser);
+
+
+                SqlParameter idOut = new SqlParameter("@Id", SqlDbType.Int);
+
+                idOut.Direction = ParameterDirection.Output;
+
+                getDataParams.Add(idOut);
+            },
+            returnParameters: delegate (SqlParameterCollection returnDataParams)
+            {
+                object oId = returnDataParams["@Id"].Value;
+
+                int.TryParse(oId.ToString(), out id);
+            });
+
+            return id;
+        }
+
+        
+        public void UpdateListingReservation(ListingReservationUpdateRequest model, int currentUserId)
+        {
+            string procName = "dbo.ListingReservations_Update";
+
+            _data.ExecuteNonQuery(procName, inputParamMapper: delegate (SqlParameterCollection getDataParams)
+            {
+                AddCommonParams(model, getDataParams);
+                getDataParams.AddWithValue("@Id", model.Id); 
+            },
+
+            returnParameters: null);
+        }
+        public void DeleteListingReservation(StatusIdUpdateRequest model, int currentUserId)
+        {
+            string procName = "dbo.ListingReservations_Delete_ByStatusId";   
+
+            _data.ExecuteNonQuery(procName, delegate (SqlParameterCollection paramCollection)    
+            {
+                paramCollection.AddWithValue("@Id", model.Id);
+                paramCollection.AddWithValue("@StatusId", model.StatusId);   
+
+
+            }, returnParameters: null);
+        }
+        private static ListingReservation MapSingleListingReservation(IDataReader reader, ref int startingIndex)
+        {
+            ListingReservation aListing = new ListingReservation();
+            aListing.User = new User();
+            aListing.Listing = new Listing();
+            aListing.ReservationStatuses = new LookUp();
+            aListing.Files = new File();
+
+            aListing.Id = reader.GetSafeInt32(startingIndex++);
+            aListing.Listing.Baths = reader.GetSafeFloat(startingIndex++);
+            aListing.Listing.BedRooms = reader.GetSafeInt16(startingIndex++);
+            aListing.Listing.CheckInTime = reader.GetSafeTimeSpan(startingIndex++);
+            aListing.Listing.CheckOutTime = reader.GetSafeTimeSpan(startingIndex++);
+            aListing.Listing.CostPerNight = reader.GetSafeInt32(startingIndex++);
+            aListing.Listing.CostPerWeek = reader.GetSafeInt32(startingIndex++);
+            aListing.Listing.DaysAvailable = reader.GetSafeInt32(startingIndex++);
+            aListing.Listing.Description = reader.GetSafeString(startingIndex++);
+            aListing.Listing.ShortDescription = reader.GetSafeString(startingIndex++);
+            aListing.Listing.GuestCapacity = reader.GetSafeInt16(startingIndex++);
+            aListing.Listing.Title = reader.GetSafeString(startingIndex++);
+            aListing.Listing.CreatedBy = reader.GetSafeInt32(startingIndex++);
+            aListing.DateCheckIn = reader.GetSafeDateTime(startingIndex++);
+            aListing.DateCheckOut = reader.GetSafeDateTime(startingIndex++);
+            aListing.ReservationStatuses.Id = reader.GetSafeInt32(startingIndex++);
+            aListing.ReservationStatuses.Name = reader.GetSafeString(startingIndex++);
+            aListing.User.Id = reader.GetSafeInt32(startingIndex++);
+            aListing.User.Email = reader.GetSafeString(startingIndex++);
+            aListing.Files.Url = reader.GetSafeString(startingIndex++);
+            aListing.DateCreated = reader.GetSafeDateTime(startingIndex++);
+            aListing.DateModified = reader.GetSafeDateTime(startingIndex++);
+
+            return aListing;
+        }
+
+        private static Cart MapSingleCartItem(IDataReader reader, ref int startingIndex)
+        {
+            Cart aSwap = new Cart();
+            aSwap.Location = new Locations();
+            aSwap.User = new User();
+            
+            aSwap.Id = reader.GetSafeInt32(startingIndex++);
+            aSwap.Title = reader.GetSafeString(startingIndex++);
+            aSwap.CostPerNight = reader.GetSafeInt32(startingIndex++);
+            aSwap.CostPerWeek = reader.GetSafeInt32(startingIndex++);
+            aSwap.Location.LineOne = reader.GetSafeString(startingIndex++);
+            aSwap.Location.LineTwo = reader.GetSafeString(startingIndex++);
+            aSwap.Location.City = reader.GetSafeString(startingIndex++);
+            aSwap.Location.StateId = reader.GetSafeInt32(startingIndex++);
+            aSwap.Location.Zip = reader.GetSafeString(startingIndex++);
+            aSwap.DateCheckIn = reader.GetSafeDateTime(startingIndex++);
+            aSwap.DateCheckOut = reader.GetSafeDateTime(startingIndex++);
+            aSwap.User.Id = reader.GetSafeInt32(startingIndex++);
+            aSwap.User.Email = reader.GetSafeString(startingIndex++);
+            int otherUserId = reader.GetSafeInt32(startingIndex++);
+
+            string listingsJSON = reader.GetSafeString(startingIndex++);
+
+            if (listingsJSON == null) {
+                aSwap.ListingUrls = new List<ListingImageUrl> ();
+            } else {
+                aSwap.ListingUrls = Newtonsoft.Json.JsonConvert.DeserializeObject<List<ListingImageUrl>>(listingsJSON);
+            }
+
+            return aSwap;
+        }
+        private static void AddCommonParams(ListingReservationAddRequest model, SqlParameterCollection getDataParams)
+        {
+            getDataParams.AddWithValue("@ListingId", model.ListingId);
+            getDataParams.AddWithValue("@DateCheckIn", model.DateCheckIn);
+            getDataParams.AddWithValue("@DateCheckOut", model.DateCheckOut);
+            getDataParams.AddWithValue("@StatusId", model.StatusId);
+        }
+
+    }
+}
